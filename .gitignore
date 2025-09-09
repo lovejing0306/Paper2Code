@@ -1,0 +1,12 @@
+__pycache__/
+# docs/
+# .git 的大小不能超过 50MB，否则提交不成功
+.DS_Store
+.idea/
+.trae/
+.vscode/
+.ossutil_checkpoint/
+logs/
+others/
+work_dirs/
+ossutil_output/
