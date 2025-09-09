@@ -1,2 +1,2 @@
 # Paper2Code
-Implement cv or LLM based algorithms
+Implement CV or LLM based algorithms
