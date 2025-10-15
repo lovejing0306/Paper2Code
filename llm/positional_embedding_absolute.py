@@ -25,7 +25,8 @@ class AbsolutePositionalEmbedding(nn.Module):
         
         # 计算除数项
         # 1 / 10000^(2i/d_model)
-        div_term = 1.0 / torch.pow(10000.0, torch.arange(0, dim, 2).float() / dim)
+        scale = torch.arange(0, dim, 2).float() / dim
+        div_term = 1.0 / (10000.0 ** scale)
         
         # 应用正弦和余弦函数
         pe[:, 0::2] = torch.sin(position * div_term)  # 偶数位置使用sin
