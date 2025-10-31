@@ -7,13 +7,13 @@ import torch.nn.functional as F
 
 def rope_params(max_seq_len, dim):
     scale = torch.arange(0, dim, 2)[:dim//2].float() / dim
-    freqs = 1./(10000. ** scale)
-    t = torch.arange(max_seq_len, device=freqs.device)
-    freqs = torch.outer(t, freqs).float()
+    freqs = 1./(10000. ** scale)   # shape: [12]
+    pos = torch.arange(max_seq_len, device=freqs.device)  # shape:[2048]
+    freqs = torch.outer(pos, freqs).float()  # shape: [2048, 12]
     # 计算结果是个复数向量
     # 假设 freqs = [x, y] 则 freqs_cis = [cos(x) + sin(x)i, cos(y) + sin(y)i]
     # freqs.shape = [max_seq_len, dim // 2] 
-    freqs = torch.polar(torch.ones_like(freqs), freqs)
+    freqs = torch.polar(torch.ones_like(freqs), freqs)   # shape: [2048, 10]
     return freqs
 
 

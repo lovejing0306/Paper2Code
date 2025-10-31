@@ -1,8 +1,8 @@
 # coding=utf-8
+import math
 import torch
 import torch.nn as nn  
 import torch.nn.functional as F
-import math
 
 
 class MultiHeadAttention(nn.Module):

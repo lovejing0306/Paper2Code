@@ -1,6 +1,5 @@
 # coding=utf-8
 import torch
-from torch import sqrt
 import torch.nn.functional as F
 
 

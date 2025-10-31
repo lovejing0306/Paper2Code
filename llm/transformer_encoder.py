@@ -1,5 +1,5 @@
 # coding=utf-8
-
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -46,7 +46,7 @@ class MultiHeadAttention(nn.Module):
         # Q, K, V shape: (batch_size, num_heads, seq_len, d_k)
         
         # 计算注意力分数
-        scores = torch.matmul(Q, K.transpose(-2, -1)) / np.sqrt(self.d_k)
+        scores = Q@K.transpose(-2, -1) / math.sqrt(self.d_k)
         
         # 应用mask(可选)
         if mask is not None:
@@ -56,7 +56,7 @@ class MultiHeadAttention(nn.Module):
         attention_weights = F.softmax(scores, dim=-1)
         
         # 加权求和
-        attn_output = torch.matmul(attention_weights, V)
+        attn_output = attention_weights@V
         
         # 合并多个头 (combine_heads逻辑)
         batch_size, num_heads, seq_len, d_k = attn_output.size()

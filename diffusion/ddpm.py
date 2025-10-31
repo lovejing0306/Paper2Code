@@ -1,6 +1,5 @@
 # coding=utf-8
 import torch
-from torch import sqrt
 
 
 class DenoiseDiffuion:
@@ -14,7 +13,7 @@ class DenoiseDiffuion:
 	# 正向加噪过程 x_t = sqrt(alpha_bar_t) * x_0 + sqrt(1 - alpha_bar_t) * noise
 	def q_sample(self, x0, noise, t):
 		alpha_bar_t = self.alpha_bar[t]
-		x_t =  sqrt(alpha_bar_t) * x0 +  sqrt(1 - alpha_bar_t) * noise
+		x_t =  torch.sqrt(alpha_bar_t) * x0 +  torch.sqrt(1 - alpha_bar_t) * noise
 		return x_t
 	
 	def p_sample(self, model, x_t, t):
@@ -22,11 +21,11 @@ class DenoiseDiffuion:
 		pred_noise = model(x_t, t)
 		alpha_bar_t = self.alpha_bar[t]
 		alpha_t = self.alpha[t]
-		coef = (1 - alpha_t) / sqrt(1 - alpha_bar_t)
-		mean = 1 / sqrt(alpha_t) * (x_t - coef * pred_noise)
+		coef = (1 - alpha_t) / torch.sqrt(1 - alpha_bar_t)
+		mean = 1 / torch.sqrt(alpha_t) * (x_t - coef * pred_noise)
 		var = self.beta[t]
 		eps = torch.randn(x_t.shape) # 额外随机噪声
-		return mean + sqrt(var) * eps
+		return mean + torch.sqrt(var) * eps
 			
 	# loss计算过程，model负责预测noise，
 	# loss = (noise - model(q_sample(x0, t, noise), t)) ** 2

@@ -28,7 +28,7 @@ class InfoNCELoss(nn.Module):
         
         # 计算相似度矩阵 (batch_size, batch_size)
         # logits[i][j] 表示第 i 个图像和第 j 个文本的相似度
-        logits = torch.matmul(image_features, text_features.T) / self.temperature
+        logits = image_features@text_features.T / self.temperature
         
         # 创建标签：对角线元素为正样本对
         batch_size = image_features.shape[0]
