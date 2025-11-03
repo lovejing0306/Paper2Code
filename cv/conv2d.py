@@ -1,6 +1,6 @@
 # coding=utf-8
 
-def convolve2d(image, kernel, padding=0, stride=1):
+def conv2d(image, kernel, padding=0, stride=1):
     """
     单通道图像的二维卷积操作
     
@@ -40,7 +40,7 @@ def convolve2d(image, kernel, padding=0, stride=1):
         image_w = len(image[0])
     
     # 计算输出尺寸
-    output_h = (image_h - kernel_h) // stride + 1
+    output_h = (image_h - kernel_h) // stride + 1  # 直接使用 padding 后的图像做计算输出特征图大小
     output_w = (image_w - kernel_w) // stride + 1
     
     # 初始化输出矩阵
@@ -49,7 +49,7 @@ def convolve2d(image, kernel, padding=0, stride=1):
         output.append([0] * output_w)
     
     # 执行卷积操作
-    for i in range(output_h):
+    for i in range(output_h):  # 以输出矩阵为参考
         for j in range(output_w):
             # 计算当前位置的卷积值
             conv_sum = 0
@@ -63,6 +63,49 @@ def convolve2d(image, kernel, padding=0, stride=1):
     
     return output
 
+
+def conv2d_2(image, kernel, stride, padding):
+    org_h = len(image)
+    org_w = len(image[0])
+    kernel_h = len(kernel)
+    kernel_w = len(kernel[0])
+    padding_h = org_h + 2*padding
+    padding_w = org_w + 2*padding
+
+    image_pad = []
+    for _ in range(padding_h):
+        image_pad.append([0] * padding_w)
+    
+    for r in range(org_h):
+        for c in range(org_w):
+            i = r + padding
+            j = c + padding
+            image_pad[i][j] = image[r][c]
+
+    out_h = (org_h - kernel_h + 2*padding) // stride + 1
+    out_w = (org_w - kernel_w + 2*padding) // stride + 1
+
+    image_out = []
+    for _ in range(out_h):
+        image_out.append([0]*out_w)
+    
+    r_new = 0  # 标识新特征图在行方向的索引
+    r_old = 0    # 标识原始特征图在行方向的起始索引
+    while r_old <= padding_h - kernel_h:
+        c_old = 0  # 标识原始特征图在列方向的起始索引
+        c_new = 0   # 标识新特征图在列方向的起始索引
+        while c_old <= padding_w - kernel_w:
+            sum_ = 0
+            for i in range(kernel_h):
+                for j in range(kernel_w):
+                    sum_ += image_pad[r_old + i][c_old + j] * kernel[i][j]
+            image_out[r_new][c_new] = sum_
+            c_old += stride  # 更新列索引
+            c_new += 1   # 更新列所有呢
+        r_old += stride  # 更新行索引
+        r_new += 1     # 更新行索引
+    return image_out
+	
 
 # 使用示例
 if __name__ == "__main__":
@@ -82,23 +125,6 @@ if __name__ == "__main__":
         [-1, -1, -1]
     ]
     
-    # 执行卷积（无填充，步长为1）
-    result = convolve2d(image, kernel, padding=0, stride=1)
+    res2 = conv2d_2(image, kernel, padding=1, stride=1)
+    print(res2)
     
-    print("输入图像:")
-    for row in image:
-        print(row)
-    
-    print("\n卷积核:")
-    for row in kernel:
-        print(row)
-    
-    print("\n卷积结果:")
-    for row in result:
-        print(row)
-    
-    # 使用填充的例子
-    print("\n\n使用 padding=1 的卷积结果:")
-    result_padded = convolve2d(image, kernel, padding=1, stride=1)
-    for row in result_padded:
-        print(row)
