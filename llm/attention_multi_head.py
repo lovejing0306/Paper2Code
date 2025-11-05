@@ -62,7 +62,7 @@ class MultiHeadAttention(nn.Module):
         # 4. 应用掩码（如果提供）
         if enable_causal:
             mask = torch.ones(scores.size(-2), scores.size(-1)).triu(1).bool()
-            scores = scores.masked_fill(mask, float('-inf'))
+            scores = scores.masked_fill(mask, float('-inf'))  # 在注意力分数上应用 掩码 策略
         
         # 5. 应用softmax获得注意力权重
         attention_score = F.softmax(scores, dim=-1)

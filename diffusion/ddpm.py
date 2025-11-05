@@ -5,8 +5,8 @@ import torch
 class DenoiseDiffuion:
 	# 核心公式 x_t = sqrt(alpha_t) * x_t-1 + sqrt(1-alpha_t) * noise
 	# 准备超参数alpha和beta，代表强度不同的高斯分布
-	def __init___(self, num_time_step=1000):
-		self.beta = torch.linspace(0.001, 0.02, num_time_step)
+	def __init___(self, beta_start=0.001, beta_end=0.02, num_time_step=1000):
+		self.beta = torch.linspace(beta_start, beta_end, num_time_step)
 		self.alpha = 1 - self.beta
 		self.alpha_bar = torch.cumprod(self.alpha) # [alpha_0, alpha_0 * alpha_1, ...]
 

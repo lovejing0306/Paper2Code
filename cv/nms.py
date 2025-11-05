@@ -1,4 +1,5 @@
 # coding=utf-8
+import numpy as np
 
 def iou(p1, p2):  # 核心是重叠区域的坐标
     x11, y11, x12, y12 = p1
@@ -24,7 +25,7 @@ def nms(dets, ths):
     scores = dets[:, 4]  # 取出预测分数
     # 此处的排序方法较为关键！！！
     order = scores.argsort()[::-1]  # ::-1表示逆序
-    keep = list()  # 保留的框对应的索引
+    keep = []  # 保留的框对应的索引
     visited = [False] * len(order)  # 标记元素是否被访问过，默认为没有被访问过
 
     for i in range(len(order)):
@@ -39,10 +40,27 @@ def nms(dets, ths):
                 if visited[j]:
                     pass
                 else:
-                    p2 = dets[order[j], :]
+                    p2 = dets[order[j], :4]
                     iou_val = iou(p1, p2)
                     # 如果大于阈值说明为重叠的框，则将其标记为被访问过的状态
                     if iou_val >= ths:
                         visited[j] = True
                 j += 1
     return keep
+
+
+if __name__ == '__main__':
+    # 简单 NMS 测试用例
+    # 框格式: [x1, y1, x2, y2, score]
+    dets = np.array([
+        [0,   0,   100, 100, 0.9],  # A
+        [10,  10,  110, 110, 0.8],  # B 与 A 有较大重叠，IoU≈0.68
+        [200, 200, 300, 300, 0.7],  # C 远离 A/B
+        [210, 210, 290, 290, 0.6],  # D 与 C 重叠，IoU≈0.64
+    ], dtype=float)
+
+    keep = nms(dets, ths=0.5)
+    print('keep:', keep)
+    assert keep == [0, 2], f"Expected [0, 2], got {keep}"
+    print('NMS test passed.')
+    
