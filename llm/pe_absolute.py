@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 
-class AbsolutePositionalEmbedding(nn.Module):
+class AbsolutePE(nn.Module):
     """
     绝对位置编码实现
     使用正弦和余弦函数为序列中的每个位置生成唯一的编码向量
@@ -15,27 +15,26 @@ class AbsolutePositionalEmbedding(nn.Module):
             seq_len (int): 最大序列长度
             dim (int): 模型维度
         """
-        super(AbsolutePositionalEmbedding, self).__init__()
+        super(AbsolutePE, self).__init__()
         self.dim = dim
         self.seq_len = seq_len
         
         # 创建位置编码矩阵
         pe = torch.zeros(seq_len, dim)
-        position = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1)  # 创建位置
+        pos = torch.arange(0, seq_len)  # 创建位置
         
         # 计算除数项
         # 1 / 10000^(2i/d_model)
         scale = torch.arange(0, dim, 2).float() / dim
-        div_term = 1.0 / (10000.0 ** scale)
+        freqs = 1.0 / (10000.0 ** scale)
+        freqs = torch.outer(pos, freqs).float()
         
         # 应用正弦和余弦函数
-        pe[:, 0::2] = torch.sin(position * div_term)  # 偶数位置使用sin
-        pe[:, 1::2] = torch.cos(position * div_term)  # 奇数位置使用cos
+        pe[:, 0::2] = torch.sin(freqs)  # 偶数位置使用sin # 0::2 表示从 0 开始每间隔一个位置放一个元素
+        pe[:, 1::2] = torch.cos(freqs)  # 奇数位置使用cos # 1::2 表示从 1 开始每间隔一个位置放一个元素
         
-        # 添加batch维度并注册为buffer（不参与梯度更新 ！！！）
-        pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
-    
+        self.pe = pe.unsqueeze(0)   # 添加 batch 维度
+        
     def forward(self, x):
         """
         前向传播
@@ -56,7 +55,7 @@ if __name__ == "__main__":
     dim = 512
     
     # 创建位置编码层
-    pos_embedding = AbsolutePositionalEmbedding(seq_len, dim)
+    pos_embedding = AbsolutePE(seq_len, dim)
     
     # 创建输入张量
     x = torch.randn(batch_size, seq_len, dim)
