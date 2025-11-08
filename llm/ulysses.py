@@ -144,3 +144,35 @@ class UlyssesAttention(nn.Module):
             output = torch.cat(output_list, dim=1)  # [batch, seq_len, dim]
         
         return output
+
+if __name__ == '__main__':
+    torch.manual_seed(0)
+
+    batch = 2
+    seq_len = 8
+    dim = 16
+    num_heads = 4
+
+    # world_size=1 避免分布式依赖，测试基本行为
+    attn = UlyssesAttention(dim=dim, num_heads=num_heads, dropout=0.0, world_size=1, rank=0)
+
+    x = torch.randn(batch, seq_len, dim)
+
+    # 构造一个因果掩码：上三角置为大负数，抑制当前位置看到未来
+    causal = torch.triu(torch.ones(seq_len, seq_len), diagonal=1)
+    mask = (causal * -1e9).unsqueeze(0).unsqueeze(0).repeat(batch, num_heads, 1, 1)
+
+    # 形状与 return_local 行为
+    out_full = attn(x, attention_mask=mask, return_local=False)
+    out_local = attn(x, attention_mask=mask, return_local=True)
+
+    assert out_full.shape == (batch, seq_len, dim)
+    assert out_local.shape == (batch, seq_len, dim)
+
+    # world_size=1 时，两种返回方式应一致
+    assert torch.allclose(out_full, out_local, atol=1e-6)
+
+    # 掩码应影响输出：与无掩码的结果不同
+    out_no_mask = attn(x, attention_mask=None, return_local=False)
+    diff = torch.max(torch.abs(out_full - out_no_mask)).item()
+    assert diff > 1e-6
