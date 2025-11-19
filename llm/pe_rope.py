@@ -8,17 +8,17 @@ import torch.nn.functional as F
 # 生成旋转矩阵
 def rope_params(max_seq_len, dim):
     # 计算词向量元素两两分组之后，每组元素对应的旋转角度 \theta_i
-    scale = torch.arange(0, dim, 2).float()[: dim // 2] / dim
+    scale = torch.arange(0, dim, 2).float()[: dim // 2] / dim  # 64 -> [32]
     freqs = 1.0 / (10000.0 ** scale)
     # 生成 token 序列索引 t = [0, 1,..., seq_len-1]
     t = torch.arange(max_seq_len, device=freqs.device)
     # freqs.shape = [max_seq_len, dim // 2] 
-    freqs = torch.outer(t, freqs).float()  # 计算 m * \theta
-
+    freqs = torch.outer(t, freqs).float()  # 计算 m * \theta  [4096, 32]
+    
     # 计算结果是个复数向量
     # 假设 freqs = [x, y] 则 freqs_cis = [cos(x) + sin(x)i, cos(y) + sin(y)i]
     # freqs.shape = [max_seq_len, dim // 2] 
-    freqs = torch.polar(torch.ones_like(freqs), freqs)
+    freqs = torch.polar(torch.ones_like(freqs), freqs)   # [4096, 32]
     return freqs
 
 
@@ -34,13 +34,14 @@ def rope_apply(x, freqs):
     x_ = torch.view_as_complex(x_)
     
     # freqs_cis 需要扩展维度以匹配 [batch_size, seq_len, n_heads, head_dim // 2]
-    # [seq_len, head_dim // 2] -> [1, seq_len, 1, head_dim // 2] 以便广播
+    # [seq_len, head_dim // 2] -> [1, seq_len, 1, head_dim // 2] 以便广播  !!!
     freqs = freqs.unsqueeze(0).unsqueeze(2)
     
     # 应用旋转操作，然后将结果转回实数域
     x_out = torch.view_as_real(x_ * freqs)
     x_out = x_out.flatten(-2) # 将结果转为 [batch_size, seq_len, n_heads, head_dim]
-    return x_out.type_as(x)
+    x_out = x_out.type_as(x)
+    return x_out
 
 
 # 注意力类
