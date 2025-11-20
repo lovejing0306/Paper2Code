@@ -15,7 +15,7 @@ class SingleHeadAttention(nn.Module):
             dim: 模型维度
             dropout: dropout概率
         """
-        super(SingleHeadAttention, self).__init__()
+        super().__init__()
         self.dim = dim
         
         # 线性变换层，用于生成Q、K、V
