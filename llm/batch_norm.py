@@ -3,29 +3,30 @@
 import torch
 import torch.nn as nn
 
-class BatchNorm1d:
+class BatchNorm1d(nn.Module):
     """
     手动实现的 Batch Normalization (1D)
     用于全连接层或1D卷积层
     """
-    def __init__(self, num_features, eps=1e-5, momentum=0.1):
+    def __init__(self, dim, eps=1e-5, momentum=0.1):
+        super().__init__()
         """
         Args:
-            num_features: 特征维度
+            dim: 特征维度
             eps: 防止除零的小常数
             momentum: 移动平均的动量
         """
-        self.num_features = num_features
+        self.dim = dim
         self.eps = eps
         self.momentum = momentum
         
         # 可学习参数
-        self.gamma = torch.ones(num_features)  # 缩放参数
-        self.beta = torch.zeros(num_features)   # 偏移参数
+        self.gamma = torch.ones(dim)  # 缩放参数
+        self.beta = torch.zeros(dim)   # 偏移参数
         
         # 用于推理的移动平均统计量
-        self.running_mean = torch.zeros(num_features)
-        self.running_var = torch.ones(num_features)
+        self.running_mean = torch.zeros(dim)
+        self.running_var = torch.ones(dim)   # 方差为 1
         
         self.training = True
     
@@ -33,16 +34,16 @@ class BatchNorm1d:
         """
         前向传播
         Args:
-            x: 输入张量，形状为 (batch_size, num_features) 或 (batch_size, num_features, length)
+            x: 输入张量，形状为 (batch_size, dim) 或 (batch_size, dim, length)
         """
         if self.training:
             # 训练模式：使用当前批次的均值和方差
             if x.dim() == 2:
-                # (batch_size, num_features)
+                # (batch_size, dim)
                 mean = x.mean(dim=0)
                 var = x.var(dim=0, unbiased=False)
             else:
-                # (batch_size, num_features, length)
+                # (batch_size, dim, length)
                 mean = x.mean(dim=(0, 2))
                 var = x.var(dim=(0, 2), unbiased=False)
             
@@ -71,29 +72,30 @@ class BatchNorm1d:
         self.training = True
 
 
-class BatchNorm2d:
+class BatchNorm2d(nn.Module):
     """
     手动实现的 Batch Normalization (2D)
     用于2D卷积层
     """
-    def __init__(self, num_features, eps=1e-5, momentum=0.1):
+    def __init__(self, dim, eps=1e-5, momentum=0.1):
+        super().__init__()
         """
         Args:
-            num_features: 通道数
+            dim: 通道数
             eps: 防止除零的小常数
             momentum: 移动平均的动量
         """
-        self.num_features = num_features  # 序列的维度
+        self.dim = dim  # 序列的维度
         self.eps = eps
         self.momentum = momentum
         
         # 可学习参数
-        self.gamma = torch.ones(num_features)
-        self.beta = torch.zeros(num_features)
+        self.gamma = torch.ones(dim)
+        self.beta = torch.zeros(dim)
         
         # 用于推理的移动平均统计量
-        self.running_mean = torch.zeros(num_features)
-        self.running_var = torch.ones(num_features)
+        self.running_mean = torch.zeros(dim)
+        self.running_var = torch.ones(dim)
         
         self.training = True
     
@@ -140,7 +142,7 @@ class BatchNorm2d:
 if __name__ == "__main__":
     # 1D Batch Norm 示例
     print("=== BatchNorm1d 示例 ===")
-    bn1d = BatchNorm1d(num_features=4)
+    bn1d = BatchNorm1d(dim=4)
     x1d = torch.randn(8, 4)  # (batch_size=8, features=4)
     
     bn1d.train()
@@ -152,7 +154,7 @@ if __name__ == "__main__":
     
     # 2D Batch Norm 示例
     print("=== BatchNorm2d 示例 ===")
-    bn2d = BatchNorm2d(num_features=3)
+    bn2d = BatchNorm2d(dim=3)
     x2d = torch.randn(4, 3, 8, 8)  # (batch_size=4, channels=3, height=8, width=8)
     
     bn2d.train()
