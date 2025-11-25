@@ -8,36 +8,36 @@ import torch.nn.functional as F
 class WindowAttention(nn.Module):
     """CV 中使用的窗口多头自注意力（类似 Swin 的 Window-MSA）"""
 
-    def __init__(self, dim, window_size=(7, 7), num_heads=8, dropout=0.1):
+    def __init__(self, dim, window_size=(7, 7), n_head=8, dropout=0.1):
         """
         初始化窗口注意力层。
         Args:
             dim: 通道维度 C
             window_size: 窗口大小 (Wh, Ww)
-            num_heads: 注意力头数
+            n_head: 注意力头数
             dropout: dropout 概率
         """
         super().__init__()
-        assert dim % num_heads == 0, "dim必须能被num_heads整除"
+        assert dim % n_head == 0, "dim必须能被n_head整除"
 
         self.dim = dim
         self.window_size = window_size
-        self.num_heads = num_heads
-        self.head_dim = dim // num_heads
+        self.n_head = n_head
+        self.head_dim = dim // n_head
 
         # 线性变换层：生成 Q, K, V
-        self.W_q = nn.Linear(dim, dim, bias=True)
-        self.W_k = nn.Linear(dim, dim, bias=True)
-        self.W_v = nn.Linear(dim, dim, bias=True)
+        self.w_q = nn.Linear(dim, dim, bias=True)
+        self.w_k = nn.Linear(dim, dim, bias=True)
+        self.w_v = nn.Linear(dim, dim, bias=True)
         # 输出投影
-        self.W_o = nn.Linear(dim, dim)
+        self.w_o = nn.Linear(dim, dim)
 
         self.dropout = nn.Dropout(dropout)
 
         # # 相对位置偏置表（注意力稳定与提升空间信息建模）
         # Wh, Ww = self.window_size
         # self.relative_position_bias_table = nn.Parameter(
-        #     torch.zeros((2 * Wh - 1) * (2 * Ww - 1), num_heads)
+        #     torch.zeros((2 * Wh - 1) * (2 * Ww - 1), n_head)
         # )
 
         # # 预计算相对位置索引 [N, N]，其中 N = Wh*Ww
@@ -58,7 +58,7 @@ class WindowAttention(nn.Module):
         # # 参数初始化
         # nn.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
 
-    def window_partition(self, x, window_size):
+    def w_partition(self, x, window_size):
         """
         将图像特征按窗口划分。
         Args:
@@ -67,15 +67,15 @@ class WindowAttention(nn.Module):
         Returns:
             windows: [B * num_windows, Wh*Ww, C]
         """
-        B, H, W, C = x.shape
-        Wh, Ww = window_size
-        assert H % Wh == 0 and W % Ww == 0, "H与W必须能被window_size整除"
-        x = x.view(B, H // Wh, Wh, W // Ww, Ww, C)  # ！！！！！
+        bs, h, w, c = x.shape
+        w_h, w_w = window_size
+        assert h % w_h == 0 and w % w_w == 0, "H与W必须能被window_size整除"
+        x = x.view(bs, h // w_h, w_h, w // w_w, w_w, c)  # ！！！！！
         # [B, H//Wh, W//Ww, Wh, Ww, C] -> [B*(H//Wh)*(W//Ww), Wh*Ww, C]
-        windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B * (H // Wh) * (W // Ww), Wh * Ww, C)
+        windows = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(bs * (h // w_h) * (w // w_w), w_h * w_w, c)
         return windows
 
-    def window_reverse(self, x, window_size, H, W, B):
+    def w_reverse(self, x, window_size, h, w, bs):
         """
         将窗口特征还原为原始空间布局。
         Args:
@@ -86,13 +86,13 @@ class WindowAttention(nn.Module):
         Returns:
             x: [B, H, W, C]
         """
-        Wh, Ww = window_size
-        x = x.view(B, H // Wh, W // Ww, Wh, Ww, -1)
+        w_h, w_w = window_size
+        x = x.view(bs, h // w_h, w // w_w, w_h, w_w, -1)
         # [B, H//Wh, W//Ww, Wh, Ww, C] -> [B, H, W, C]
-        x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(B, H, W, -1)
+        x = x.permute(0, 1, 3, 2, 4, 5).contiguous().view(bs, h, w, -1)
         return x
 
-    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor = None):
+    def forward(self, x, attn_mask = None):
         """
         前向传播（窗口注意力）。
         Args:
@@ -102,23 +102,23 @@ class WindowAttention(nn.Module):
         Returns:
             y: 输出特征 [B, H, W, C]
         """
-        B, H, W, C = x.shape
-        assert C == self.dim, "输入通道与dim不匹配"
-        Wh, Ww = self.window_size
-        assert H % Wh == 0 and W % Ww == 0, "H与W必须能被window_size整除"
+        bs_, h, w, c = x.shape
+        assert c == self.dim, "输入通道与dim不匹配"
+        w_h, w_w = self.window_size
+        assert h % w_h == 0 and w % w_w == 0, "H与W必须能被window_size整除"
 
         # 1) 窗口划分并展平到序列
-        windows = self.window_partition(x, self.window_size)  # [Bn, N, C]
-        Bn, N, _ = windows.shape
+        windows = self.w_partition(x, self.window_size)  # [Bn, N, C]
+        bs, n, _ = windows.shape
 
         # 2) 线性变换生成 Q、K、V 并切分多头
-        Q = self.W_q(windows).view(Bn, N, self.num_heads, self.head_dim).transpose(1, 2)
-        K = self.W_k(windows).view(Bn, N, self.num_heads, self.head_dim).transpose(1, 2)
-        V = self.W_v(windows).view(Bn, N, self.num_heads, self.head_dim).transpose(1, 2)
+        q = self.w_q(windows).view(bs, n, self.n_head, self.head_dim).transpose(1, 2)
+        k = self.w_k(windows).view(bs, n, self.n_head, self.head_dim).transpose(1, 2)
+        v = self.w_v(windows).view(bs, n, self.n_head, self.head_dim).transpose(1, 2)
 
         # 3) 注意力分数 + 相对位置偏置
-        scores = (Q @ K.transpose(-2, -1)) / math.sqrt(self.head_dim)  # [Bn, h, N, N]
-        # bias = self.relative_position_bias_table[self.relative_position_index.reshape(-1)].view(N, N, self.num_heads)
+        scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)  # [Bn, h, N, N]
+        # bias = self.relative_position_bias_table[self.relative_position_index.reshape(-1)].view(N, N, self.n_head)
         # bias = bias.permute(2, 0, 1).unsqueeze(0)  # [1, h, N, N]
         # scores = scores + bias
 
@@ -135,25 +135,25 @@ class WindowAttention(nn.Module):
         attn = self.dropout(attn)
 
         # 6) 加权聚合并恢复形状
-        y = attn @ V  # [Bn, h, N, head_dim]
-        y = y.transpose(1, 2).contiguous().view(Bn, N, C)  # [Bn, N, C]
-        y = self.W_o(y)  # 输出投影
-        y = self.window_reverse(y, self.window_size, H, W, B)  # [B, H, W, C]
-        return y
+        out = attn @ v  # [Bn, h, N, head_dim]
+        out = out.transpose(1, 2).contiguous().view(bs, n, c)  # [Bn, N, C]
+        out = self.w_o(out)  # 输出投影
+        out = self.w_reverse(out, self.window_size, h, w, bs_)  # [B, H, W, C]
+        return out
 
 
 # 示例使用
 if __name__ == "__main__":
     # 图像特征输入（B, H, W, C）
     B, H, W, C = 2, 8, 8, 64
-    num_heads = 8
+    n_head = 8
     window_size = (4, 4)
 
     x = torch.randn(B, H, W, C)
-    attn = WindowAttention(dim=C, window_size=window_size, num_heads=num_heads, dropout=0.1)
-    y = attn(x)
+    attention = WindowAttention(dim=C, window_size=window_size, n_head=n_head, dropout=0.1)
+    out = attention(x)
 
     print(f"输入形状: {x.shape}")
-    print(f"窗口注意力输出形状: {y.shape}")
-    print(f"窗口大小: {window_size}, 注意力头数: {num_heads}")
+    print(f"窗口注意力输出形状: {out.shape}")
+    print(f"窗口大小: {window_size}, 注意力头数: {n_head}")
     

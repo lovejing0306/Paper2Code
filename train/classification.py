@@ -11,7 +11,7 @@ class SimpleNet(nn.Module):
         self.linear_0 = nn.Linear(input_channel, input_channel)
         self.relu = nn.ReLU()
         self.linear_1 = nn.Linear(input_channel, num_classes)
-        # 移除softmax，因为CrossEntropyLoss内部已包含
+        # 移除softmax，因为rossEntropyLoss内部已包含
     
     def forward(self, x):
         x = self.linear_0(x)
