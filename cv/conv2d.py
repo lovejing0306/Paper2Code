@@ -55,7 +55,7 @@ def conv2d(image, kernel, padding=0, stride=1):
             conv_sum = 0
             for ki in range(kernel_h):
                 for kj in range(kernel_w):
-                    image_i = i * stride + ki
+                    image_i = i * stride + ki   # 在反向计算的时候没有执行 -1 操作 !!!
                     image_j = j * stride + kj
                     conv_sum += image[image_i][image_j] * kernel[ki][kj]
             
