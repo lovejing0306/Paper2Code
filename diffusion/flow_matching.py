@@ -11,14 +11,14 @@ class FlowMatching:
         pass
     
     # 欧拉采样:从噪声逐步生成数据
-    def euler_sample(self, model, x0, num_steps=100):
+    def infer(self, model, x1, num_steps=100):
         """
         使用欧拉方法从噪声生成样本
         dx/dt = v_theta(x_t, t)
         x_{t+dt} = x_t + v_theta(x_t, t) * dt
         """
         dt = 1.0 / num_steps
-        x_t = x0.clone()  # 修复: 初始化 x_t
+        x_t = x1.clone()  # 修复: 初始化 x_t
         
         for i in range(num_steps):
             # 创建一个长度为 batch_size 的一维张量 t ，把每个元素都设为当前时间 i * dt
@@ -33,7 +33,7 @@ class FlowMatching:
     # Flow Matching 损失函数
     # loss = ||v_theta(x_t, t) - (x_1 - x_0)||^2
     # 模型学习预测从当前点 x_t 到目标数据 x_1 的速度场
-    def loss(self, model, x1):
+    def train(self, model, x0):
         """
         Flow Matching 训练损失
         model: 速度场预测模型 v_theta(x_t, t)
@@ -42,10 +42,10 @@ class FlowMatching:
         # 随机采样时间 t ∈ [0,1]
         t = torch.rand(1)
         # 从标准高斯分布采样噪声 x_0 ~ N(0, I)
-        x0 = torch.randn_like(x1)  # x0 为纯噪声
-        # 构造条件流: x_t = t * x_1 + (1-t) * x_0
+        x1 = torch.randn_like(x0)  # x1 为纯噪声
+        # 构造条件流: x_t = (1-t) * x_0 + t * x_1
         # x_0 是源分布(通常是高斯噪声), x_1 是目标分布(真实数据)
-        x_t = t * x1 + (1 - t) * x0
+        x_t = (1 - t) * x0 + t * x1
         # 计算目标速度场(真实流场)
         target_v = x1 - x0
         # 模型预测速度场
